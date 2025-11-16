@@ -264,66 +264,7 @@ async def get_bookings(
     return bookings
 
 
-@router.get("/{booking_id}", response_model=BookingResponse)
-async def get_booking(
-    booking_id: UUID,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Get booking details"""
-    booking = db.query(Booking).filter(Booking.id == booking_id).first()
-    if not booking:
-        raise HTTPException(status_code=404, detail="Booking not found")
-
-    # Check permissions - allow client, salon staff, and admins
-    from app.models.salon import Salon
-    from app.models.user import UserRole
-
-    is_client = booking.client_id == current_user.id
-    is_admin = current_user.role == UserRole.PLATFORM_ADMIN
-
-    # Check if user is salon owner or staff
-    salon = db.query(Salon).filter(Salon.id == booking.salon_id).first()
-    is_salon_owner = salon and salon.owner_id == current_user.id
-
-    if not (is_client or is_admin or is_salon_owner):
-        raise HTTPException(status_code=403, detail="Not enough permissions")
-
-    return booking
-
-
-@router.patch("/{booking_id}", response_model=BookingResponse)
-async def update_booking(
-    booking_id: UUID,
-    status: str,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Update booking status"""
-    booking = db.query(Booking).filter(Booking.id == booking_id).first()
-    if not booking:
-        raise HTTPException(status_code=404, detail="Booking not found")
-
-    # Check permissions
-    if booking.client_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not enough permissions")
-
-    # Validate status transition (clients can only cancel)
-    if status == "cancelled_by_client":
-        if booking.status not in [BookingStatus.PENDING, BookingStatus.CONFIRMED]:
-            raise HTTPException(status_code=400, detail="Cannot cancel booking in current status")
-        booking.status = BookingStatus.CANCELLED_BY_CLIENT
-        booking.cancelled_at = datetime.utcnow()
-    else:
-        raise HTTPException(status_code=400, detail="Invalid status transition")
-
-    db.commit()
-    db.refresh(booking)
-
-    return booking
-
-
-# Reviews
+# Reviews (must be before /{booking_id} to avoid route conflicts)
 @router.post("/reviews", response_model=ReviewResponse, status_code=status.HTTP_201_CREATED)
 async def create_review(
     review_data: ReviewCreate,
@@ -502,3 +443,62 @@ async def hide_review(
     db.commit()
 
     return None
+
+
+@router.get("/{booking_id}", response_model=BookingResponse)
+async def get_booking(
+    booking_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get booking details"""
+    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    # Check permissions - allow client, salon staff, and admins
+    from app.models.salon import Salon
+    from app.models.user import UserRole
+
+    is_client = booking.client_id == current_user.id
+    is_admin = current_user.role == UserRole.PLATFORM_ADMIN
+
+    # Check if user is salon owner or staff
+    salon = db.query(Salon).filter(Salon.id == booking.salon_id).first()
+    is_salon_owner = salon and salon.owner_id == current_user.id
+
+    if not (is_client or is_admin or is_salon_owner):
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    return booking
+
+
+@router.patch("/{booking_id}", response_model=BookingResponse)
+async def update_booking(
+    booking_id: UUID,
+    status: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update booking status"""
+    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    # Check permissions
+    if booking.client_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    # Validate status transition (clients can only cancel)
+    if status == "cancelled_by_client":
+        if booking.status not in [BookingStatus.PENDING, BookingStatus.CONFIRMED]:
+            raise HTTPException(status_code=400, detail="Cannot cancel booking in current status")
+        booking.status = BookingStatus.CANCELLED_BY_CLIENT
+        booking.cancelled_at = datetime.utcnow()
+    else:
+        raise HTTPException(status_code=400, detail="Invalid status transition")
+
+    db.commit()
+    db.refresh(booking)
+
+    return booking
