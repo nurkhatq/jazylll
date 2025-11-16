@@ -228,7 +228,7 @@ async def create_booking(
         phone_number=current_user.phone,
         message_type=WhatsAppMessageType.BOOKING_CONFIRMATION,
         message_body=f"Booking confirmed for {booking.booking_date} at {booking.start_time}. "
-                     f"Service: {service.service_name_ru}. Branch: {branch.branch_name}."
+                     f"Service: {service.service_name_ru}. Branch ID: {booking.branch_id}."
     )
     db.add(client_message)
 
