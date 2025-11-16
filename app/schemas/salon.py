@@ -48,6 +48,8 @@ class SalonResponse(BaseModel):
     is_active: bool
     created_at: datetime
     branches: Optional[List['BranchResponse']] = []
+    services: Optional[List['ServiceResponse']] = []
+    masters: Optional[List] = []  # Will be populated by relationship
 
     class Config:
         from_attributes = True
