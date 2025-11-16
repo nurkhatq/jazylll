@@ -151,7 +151,9 @@ export default function DashboardPage() {
                     <div>
                       <p className="text-gray-500 text-sm">Average Rating</p>
                       <p className="text-2xl font-bold text-gray-900">
-                        {currentSalon.rating.toFixed(1)}
+                        {typeof currentSalon.rating === 'number'
+                          ? currentSalon.rating.toFixed(1)
+                          : parseFloat(currentSalon.rating || '0').toFixed(1)}
                       </p>
                     </div>
                     <div className="bg-yellow-100 p-3 rounded-full">

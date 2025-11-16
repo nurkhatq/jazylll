@@ -1,43 +1,42 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional
-import phonenumbers
 
 
-class PhoneRequest(BaseModel):
+class PhoneAuthRequest(BaseModel):
+    """Request for phone authentication code"""
     phone: str = Field(..., description="Phone number in E.164 format (+77012345678)")
     language: Optional[str] = Field("ru", description="Language for message (ru, kk, en)")
 
-    @field_validator("phone")
-    @classmethod
-    def validate_phone(cls, v):
-        try:
-            parsed = phonenumbers.parse(v, None)
-            if not phonenumbers.is_valid_number(parsed):
-                raise ValueError("Invalid phone number")
-            return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
-        except phonenumbers.NumberParseException:
-            raise ValueError("Invalid phone number format. Use E.164 format (+77012345678)")
 
-
-class CodeVerificationRequest(BaseModel):
-    phone: str
-    code: str = Field(..., min_length=6, max_length=6)
+class VerifyCodeRequest(BaseModel):
+    """Request to verify phone code"""
+    phone: str = Field(..., description="Phone number in E.164 format")
+    code: str = Field(..., min_length=6, max_length=6, description="6-digit verification code")
 
 
 class GoogleAuthRequest(BaseModel):
-    id_token: str
+    """Request for Google OAuth authentication"""
+    id_token: str = Field(..., description="Google ID token from OAuth flow")
 
 
 class TokenResponse(BaseModel):
-    access_token: str
-    refresh_token: str
-    user: dict
+    """Authentication response with JWT tokens"""
+    access_token: str = Field(..., description="JWT access token")
+    refresh_token: str = Field(..., description="JWT refresh token")
+    user: dict = Field(..., description="User information")
 
 
 class RefreshTokenRequest(BaseModel):
-    refresh_token: str
+    """Request to refresh access token"""
+    refresh_token: str = Field(..., description="Refresh token")
+
+
+# Legacy schemas (keep for backwards compatibility)
+PhoneRequest = PhoneAuthRequest
+CodeVerificationRequest = VerifyCodeRequest
 
 
 class CodeSentResponse(BaseModel):
+    """Response after sending verification code"""
     code_sent: bool
     expires_in: int
