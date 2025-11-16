@@ -7,7 +7,7 @@ from decimal import Decimal
 
 from app.db.base import get_db
 from app.api.deps import get_current_user
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.booking import Booking, BookingStatus, BookingCreatedVia, Review
 from app.models.salon import Master, Service, MasterSchedule, ScheduleException, MasterService, Salon
 from app.schemas.booking import BookingCreate, BookingResponse, AvailableSlot, ReviewCreate, ReviewResponse
