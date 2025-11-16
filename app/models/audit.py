@@ -13,10 +13,11 @@ class AuditLog(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     action_type = Column(String, nullable=False, index=True)
-    entity_type = Column(String, nullable=True)
-    entity_id = Column(UUID(as_uuid=True), nullable=True)
+    entity_type = Column(String, nullable=True, index=True)
+    entity_id = Column(UUID(as_uuid=True), nullable=True, index=True)
 
     changes = Column(JSON, nullable=True)  # {old_values, new_values}
+    metadata = Column(JSON, nullable=True)  # Additional metadata (status_code, duration, etc.)
 
     ip_address = Column(INET, nullable=True)
     user_agent = Column(Text, nullable=True)
