@@ -360,3 +360,100 @@ async def create_review(
     db.refresh(review)
 
     return review
+
+
+@router.get("/reviews", response_model=List[ReviewResponse])
+async def get_reviews(
+    salon_id: Optional[UUID] = Query(None),
+    master_id: Optional[UUID] = Query(None),
+    rating: Optional[int] = Query(None, ge=1, le=5),
+    sort: str = Query("recent", description="Sort by: recent, highest_rated, lowest_rated"),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """Get list of reviews"""
+    # Must provide either salon_id or master_id
+    if not salon_id and not master_id:
+        raise HTTPException(status_code=400, detail="Must provide salon_id or master_id")
+
+    query = db.query(Review).filter(Review.is_visible == True)
+
+    if salon_id:
+        query = query.filter(Review.salon_id == salon_id)
+    if master_id:
+        query = query.filter(Review.master_id == master_id)
+    if rating:
+        query = query.filter(Review.rating == rating)
+
+    # Apply sorting
+    if sort == "highest_rated":
+        query = query.order_by(Review.rating.desc())
+    elif sort == "lowest_rated":
+        query = query.order_by(Review.rating.asc())
+    else:  # recent
+        query = query.order_by(Review.created_at.desc())
+
+    # Pagination
+    total = query.count()
+    reviews = query.offset((page - 1) * per_page).limit(per_page).all()
+
+    return reviews
+
+
+@router.post("/reviews/{review_id}/response", response_model=ReviewResponse)
+async def add_salon_response(
+    review_id: UUID,
+    response_text: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Add salon response to a review"""
+    review = db.query(Review).filter(Review.id == review_id).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+
+    # Check permissions - must be owner or manager of the salon
+    salon = db.query(Salon).filter(Salon.id == review.salon_id).first()
+    if salon.owner_id != current_user.id and current_user.role not in [
+        UserRole.PLATFORM_ADMIN,
+        UserRole.SALON_MANAGER,
+    ]:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    # Check if response already exists
+    if review.salon_response:
+        raise HTTPException(status_code=400, detail="Response already exists for this review")
+
+    # Add response
+    review.salon_response = response_text
+    review.responded_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(review)
+
+    # TODO: Send notification to client
+
+    return review
+
+
+@router.delete("/reviews/{review_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def hide_review(
+    review_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Hide a review (admin only)"""
+    # Only platform admins can hide reviews
+    if current_user.role != UserRole.PLATFORM_ADMIN:
+        raise HTTPException(status_code=403, detail="Only platform admins can hide reviews")
+
+    review = db.query(Review).filter(Review.id == review_id).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+
+    # Hide review
+    review.is_visible = False
+    db.commit()
+
+    return None

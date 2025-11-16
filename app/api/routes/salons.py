@@ -260,3 +260,244 @@ async def create_service(
     db.commit()
     db.refresh(service)
     return service
+
+
+@router.patch("/{salon_id}/services/{service_id}", response_model=ServiceResponse)
+async def update_service(
+    salon_id: UUID,
+    service_id: UUID,
+    service_data: ServiceCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update service"""
+    service = db.query(Service).filter(Service.id == service_id, Service.salon_id == salon_id).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    salon = db.query(Salon).filter(Salon.id == salon_id).first()
+
+    # Check permissions
+    if salon.owner_id != current_user.id and current_user.role not in [
+        UserRole.PLATFORM_ADMIN,
+        UserRole.SALON_MANAGER,
+    ]:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    # Update fields
+    service.service_name_ru = service_data.service_name_ru
+    service.service_name_kk = service_data.service_name_kk
+    service.service_name_en = service_data.service_name_en
+    service.description_ru = service_data.description_ru
+    service.description_kk = service_data.description_kk
+    service.description_en = service_data.description_en
+    service.duration_minutes = service_data.duration_minutes
+    service.base_price = service_data.base_price
+    service.category = service_data.category
+    service.price_tiers = service_data.price_tiers
+
+    db.commit()
+    db.refresh(service)
+    return service
+
+
+@router.delete("/{salon_id}/services/{service_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_service(
+    salon_id: UUID,
+    service_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Delete service (soft delete)"""
+    service = db.query(Service).filter(Service.id == service_id, Service.salon_id == salon_id).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    salon = db.query(Salon).filter(Salon.id == salon_id).first()
+
+    # Check permissions (only owner)
+    if salon.owner_id != current_user.id and current_user.role != UserRole.PLATFORM_ADMIN:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    # Soft delete
+    service.is_active = False
+    db.commit()
+    return None
+
+
+# Logo and Cover uploads
+@router.post("/{salon_id}/logo")
+async def upload_salon_logo(
+    salon_id: UUID,
+    logo: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Upload salon logo"""
+    salon = db.query(Salon).filter(Salon.id == salon_id).first()
+    if not salon:
+        raise HTTPException(status_code=404, detail="Salon not found")
+
+    # Check permissions
+    if salon.owner_id != current_user.id and current_user.role != UserRole.PLATFORM_ADMIN:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    # Validate file type
+    allowed_types = ["image/jpeg", "image/png", "image/jpg"]
+    if logo.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Invalid file type. Only JPEG and PNG allowed")
+
+    # Validate file size (5MB max)
+    contents = await logo.read()
+    if len(contents) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large. Maximum size is 5MB")
+
+    # Save file
+    os.makedirs("uploads/salons", exist_ok=True)
+    file_extension = logo.filename.split(".")[-1]
+    filename = f"{uuid_lib.uuid4()}.{file_extension}"
+    file_path = f"uploads/salons/{filename}"
+
+    with open(file_path, "wb") as f:
+        f.write(contents)
+
+    # Update salon logo URL
+    salon.logo_url = f"/uploads/salons/{filename}"
+    db.commit()
+
+    return {"logo_url": salon.logo_url}
+
+
+@router.post("/{salon_id}/cover")
+async def upload_salon_cover(
+    salon_id: UUID,
+    cover: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Upload salon cover image"""
+    salon = db.query(Salon).filter(Salon.id == salon_id).first()
+    if not salon:
+        raise HTTPException(status_code=404, detail="Salon not found")
+
+    # Check permissions
+    if salon.owner_id != current_user.id and current_user.role != UserRole.PLATFORM_ADMIN:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    # Validate file type
+    allowed_types = ["image/jpeg", "image/png", "image/jpg"]
+    if cover.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Invalid file type. Only JPEG and PNG allowed")
+
+    # Validate file size (5MB max)
+    contents = await cover.read()
+    if len(contents) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large. Maximum size is 5MB")
+
+    # Save file
+    os.makedirs("uploads/salons", exist_ok=True)
+    file_extension = cover.filename.split(".")[-1]
+    filename = f"{uuid_lib.uuid4()}.{file_extension}"
+    file_path = f"uploads/salons/{filename}"
+
+    with open(file_path, "wb") as f:
+        f.write(contents)
+
+    # Update salon cover URL
+    salon.cover_image_url = f"/uploads/salons/{filename}"
+    db.commit()
+
+    return {"cover_image_url": salon.cover_image_url}
+
+
+# Branch Management
+@router.patch("/{salon_id}/branches/{branch_id}", response_model=BranchResponse)
+async def update_branch(
+    salon_id: UUID,
+    branch_id: UUID,
+    branch_update: BranchCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update branch"""
+    branch = db.query(SalonBranch).filter(SalonBranch.id == branch_id, SalonBranch.salon_id == salon_id).first()
+    if not branch:
+        raise HTTPException(status_code=404, detail="Branch not found")
+
+    salon = db.query(Salon).filter(Salon.id == salon_id).first()
+
+    # Check permissions
+    if salon.owner_id != current_user.id and current_user.role not in [
+        UserRole.PLATFORM_ADMIN,
+        UserRole.SALON_MANAGER,
+    ]:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    # Update fields
+    branch.branch_name = branch_update.branch_name
+    branch.display_name = branch_update.display_name
+    branch.city = branch_update.city
+    branch.street_address = branch_update.street_address
+    branch.building_number = branch_update.building_number
+    branch.postal_code = branch_update.postal_code
+    branch.phone = branch_update.phone
+    branch.email = branch_update.email
+    branch.latitude = branch_update.latitude
+    branch.longitude = branch_update.longitude
+    branch.working_hours = branch_update.working_hours
+
+    db.commit()
+    db.refresh(branch)
+    return branch
+
+
+@router.delete("/{salon_id}/branches/{branch_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_branch(
+    salon_id: UUID,
+    branch_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Delete branch"""
+    from app.models.booking import Booking, BookingStatus
+
+    branch = db.query(SalonBranch).filter(SalonBranch.id == branch_id, SalonBranch.salon_id == salon_id).first()
+    if not branch:
+        raise HTTPException(status_code=404, detail="Branch not found")
+
+    salon = db.query(Salon).filter(Salon.id == salon_id).first()
+
+    # Check permissions (only owner)
+    if salon.owner_id != current_user.id and current_user.role != UserRole.PLATFORM_ADMIN:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    # Check if this is the only branch
+    branch_count = db.query(SalonBranch).filter(SalonBranch.salon_id == salon_id, SalonBranch.is_active == True).count()
+    if branch_count <= 1:
+        raise HTTPException(status_code=400, detail="Cannot delete the only branch")
+
+    # Check if this is the main branch
+    if branch.is_main:
+        raise HTTPException(status_code=400, detail="Cannot delete main branch. Set another branch as main first")
+
+    # Check for upcoming bookings
+    upcoming_bookings = (
+        db.query(Booking)
+        .filter(
+            Booking.branch_id == branch_id,
+            Booking.booking_date >= date.today(),
+            Booking.status.in_([BookingStatus.PENDING, BookingStatus.CONFIRMED]),
+        )
+        .all()
+    )
+
+    if upcoming_bookings:
+        dates = [str(b.booking_date) for b in upcoming_bookings]
+        raise HTTPException(
+            status_code=409, detail=f"Branch has upcoming bookings on: {', '.join(set(dates))}"
+        )
+
+    # Soft delete
+    branch.is_active = False
+    db.commit()
+    return None
