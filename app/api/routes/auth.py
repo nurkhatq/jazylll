@@ -137,13 +137,130 @@ async def verify_code(request: CodeVerificationRequest, db: Session = Depends(ge
 
 @router.post("/google", response_model=TokenResponse)
 async def google_auth(request: GoogleAuthRequest, db: Session = Depends(get_db)):
-    """Authenticate with Google OAuth"""
-    # TODO: Implement Google token verification
-    # For now, return error indicating implementation needed
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Google OAuth implementation requires Google client credentials configuration",
-    )
+    """
+    Authenticate with Google OAuth
+
+    FLOW:
+    1. Frontend: User clicks "Sign in with Google"
+    2. Frontend: Opens Google OAuth popup
+    3. Frontend: Receives id_token from Google
+    4. Frontend: Sends id_token to this endpoint
+    5. Backend: Validates token with Google
+    6. Backend: Creates/finds user and returns JWT tokens
+
+    FRONTEND IMPLEMENTATION:
+    ```javascript
+    // Install: npm install @react-oauth/google
+    import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
+
+    <GoogleOAuthProvider clientId="YOUR_GOOGLE_CLIENT_ID">
+      <GoogleLogin
+        onSuccess={(credentialResponse) => {
+          // Send credentialResponse.credential to backend
+          fetch('/api/v1/auth/google', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_token: credentialResponse.credential })
+          });
+        }}
+      />
+    </GoogleOAuthProvider>
+    ```
+    """
+    try:
+        # Verify Google token
+        from google.oauth2 import id_token
+        from google.auth.transport import requests
+        from app.core.config import settings
+
+        # Validate token with Google
+        idinfo = id_token.verify_oauth2_token(
+            request.id_token,
+            requests.Request(),
+            settings.GOOGLE_CLIENT_ID
+        )
+
+        # Extract user info from Google
+        google_id = idinfo['sub']
+        email = idinfo.get('email')
+        first_name = idinfo.get('given_name', '')
+        last_name = idinfo.get('family_name', '')
+
+        if not email:
+            raise HTTPException(status_code=400, detail="Email not provided by Google")
+
+        # Find or create user
+        user = db.query(User).filter(
+            (User.email == email) | (User.google_id == google_id)
+        ).first()
+
+        if not user:
+            # Create new user (salon staff only - not for clients)
+            # Clients should use phone auth
+            user = User(
+                email=email,
+                google_id=google_id,
+                first_name=first_name,
+                last_name=last_name,
+                role=UserRole.SALON_OWNER,  # Default role, can be changed by admin
+                is_active=True,
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+        else:
+            # Update Google ID if not set
+            if not user.google_id:
+                user.google_id = google_id
+                db.commit()
+
+        # Check if user is active
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account is inactive. Contact support.",
+            )
+
+        # Only allow salon staff to login with Google (not clients)
+        if user.role == UserRole.CLIENT:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Clients should use phone authentication",
+            )
+
+        # Generate JWT tokens
+        token_data = {
+            "user_id": str(user.id),
+            "role": user.role.value,
+            "email": user.email,
+        }
+        access_token = create_access_token(token_data)
+        refresh_token_str = create_refresh_token(token_data)
+
+        return TokenResponse(
+            access_token=access_token,
+            refresh_token=refresh_token_str,
+            user={
+                "id": str(user.id),
+                "email": user.email,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "role": user.role.value,
+            },
+        )
+
+    except ValueError as e:
+        # Invalid token
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid Google token: {str(e)}",
+        )
+    except ImportError:
+        # Google auth library not installed
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Google OAuth requires 'google-auth' library. Install: pip install google-auth",
+        )
 
 
 @router.post("/refresh", response_model=TokenResponse)
