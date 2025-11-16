@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { GoogleLogin } from '@react-oauth/google';
 import { googleLogin, requestVerificationCode, verifyCode } from '@/lib/api/auth';
 import { useAuthStore } from '@/lib/store/useAuthStore';
+import { getErrorMessage } from '@/lib/utils/errorHandler';
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
@@ -25,7 +26,7 @@ export default function LoginPage() {
       toast.success('Login successful!');
       router.push('/dashboard');
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Login failed');
+      toast.error(getErrorMessage(error) || 'Login failed');
     } finally {
       setLoading(false);
     }
@@ -39,7 +40,7 @@ export default function LoginPage() {
       setCodeSent(true);
       toast.success('Code sent to your phone!');
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Failed to send code');
+      toast.error(getErrorMessage(error) || 'Failed to send code');
     } finally {
       setLoading(false);
     }
@@ -56,7 +57,7 @@ export default function LoginPage() {
       toast.success('Login successful!');
       router.push('/');
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Invalid code');
+      toast.error(getErrorMessage(error) || 'Invalid code');
     } finally {
       setLoading(false);
     }
