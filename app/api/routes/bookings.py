@@ -221,24 +221,43 @@ async def create_booking(
 
     # Get branch for notifications
     from app.models.salon import SalonBranch
+
     branch = db.query(SalonBranch).filter(SalonBranch.id == booking_data.branch_id).first()
 
+ 
+
     # Send WhatsApp notifications using our WhatsApp service
+
     from app.core.whatsapp import whatsapp_client
 
+ 
+
     # Notify client
+
     if current_user.phone:
+
         try:
+
             await whatsapp_client.send_booking_confirmation(
+
                 phone=current_user.phone,
+
                 salon_name=master.salon.display_name,
+
                 master_name=f"{master.user.first_name} {master.user.last_name}" if master.user else "Master",
+
                 service_name=service.service_name_ru,
+
                 booking_date=booking.booking_date.strftime("%d.%m.%Y"),
+
                 booking_time=booking.start_time.strftime("%H:%M"),
+
                 language="ru"
+
             )
+
         except Exception as e:
+
             print(f"⚠️  Failed to send booking confirmation to client: {e}")
 
     # Notify master

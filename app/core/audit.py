@@ -22,7 +22,7 @@ async def log_audit_event(
     user_agent: Optional[str] = None,
     status_code: Optional[int] = None,
     duration_ms: Optional[int] = None,
-    metadata: Optional[Dict[str, Any]] = None
+    meta_data: Optional[Dict[str, Any]] = None
 ):
     """
     Create an audit log entry
@@ -54,7 +54,7 @@ async def log_audit_event(
             changes=changes,
             ip_address=ip_address,
             user_agent=user_agent[:500] if user_agent else None,  # Truncate long user agents
-            metadata=metadata or {}
+            meta_data=meta_data or {}
         )
 
         # Add additional metadata
@@ -101,7 +101,7 @@ def log_authentication_attempt(
             entity_type="auth",
             ip_address=ip_address,
             user_agent=user_agent[:500] if user_agent else None,
-            metadata=metadata
+            meta_data=metadata
         )
 
         db.add(audit_entry)
@@ -138,7 +138,7 @@ def log_permission_denied(
             entity_type=entity_type,
             entity_id=UUID(entity_id) if entity_id else None,
             ip_address=ip_address,
-            metadata=metadata
+            meta_data=metadata
         )
 
         db.add(audit_entry)
@@ -173,7 +173,7 @@ def log_data_access(
             entity_type=entity_type,
             entity_id=UUID(entity_id),
             ip_address=ip_address,
-            metadata=metadata
+            meta_data=metadata
         )
 
         db.add(audit_entry)
@@ -210,7 +210,7 @@ def log_security_event(
             action_type=f"security_event_{event_type}",
             entity_type="security",
             ip_address=ip_address,
-            metadata=event_metadata
+            meta_data=event_metadata
         )
 
         db.add(audit_entry)
@@ -283,7 +283,7 @@ class AuditContext:
             ip_address=self.ip_address,
             user_agent=self.user_agent,
             duration_ms=duration_ms,
-            metadata={
+            meta_data={
                 "success": exc_type is None,
                 "error": str(exc_val) if exc_val else None
             }
