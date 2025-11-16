@@ -17,7 +17,20 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     Implements token bucket algorithm
     """
 
+    # Paths to exclude from rate limiting
+    EXCLUDED_PATHS = [
+        "/docs",
+        "/redoc",
+        "/openapi.json",
+        "/health",
+        "/",
+    ]
+
     async def dispatch(self, request: Request, call_next: Callable):
+        # Skip rate limiting for documentation and health endpoints
+        if any(request.url.path.startswith(path) for path in self.EXCLUDED_PATHS):
+            return await call_next(request)
+
         # Get client identifier (IP address)
         client_ip = request.client.host if request.client else "unknown"
 
@@ -106,7 +119,19 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
     # Methods to audit
     AUDIT_METHODS = ["POST", "PUT", "PATCH", "DELETE"]
 
+    # Paths to exclude from audit
+    EXCLUDED_PATHS = [
+        "/docs",
+        "/redoc",
+        "/openapi.json",
+        "/health",
+    ]
+
     async def dispatch(self, request: Request, call_next: Callable):
+        # Skip audit for documentation endpoints
+        if any(request.url.path.startswith(path) for path in self.EXCLUDED_PATHS):
+            return await call_next(request)
+
         # Check if this request should be audited
         should_audit = (
             settings.ENABLE_AUDIT_LOGGING
@@ -139,16 +164,20 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
             # Import here to avoid circular dependency
             from app.core.audit import log_audit_event
 
-            # Create audit log entry
-            await log_audit_event(
-                user_id=user_id,
-                action_type=f"{request.method}_{request.url.path}",
-                entity_type=self._extract_entity_type(request.url.path),
-                ip_address=client_ip,
-                user_agent=user_agent,
-                status_code=response.status_code,
-                duration_ms=int(duration * 1000)
-            )
+            # Create audit log entry (wrapped in try-except to not break requests)
+            try:
+                await log_audit_event(
+                    user_id=user_id,
+                    action_type=f"{request.method}_{request.url.path}",
+                    entity_type=self._extract_entity_type(request.url.path),
+                    ip_address=client_ip,
+                    user_agent=user_agent,
+                    status_code=response.status_code,
+                    duration_ms=int(duration * 1000)
+                )
+            except Exception as e:
+                # Don't fail the request if audit logging fails
+                print(f"⚠️  Audit logging failed: {e}")
 
             return response
         else:
@@ -184,27 +213,42 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
         "javascript:",
         "onerror=",
         "onload=",
-        "../",
         "DROP TABLE",
         "SELECT * FROM",
         "UNION SELECT",
         "INSERT INTO",
     ]
 
+    # Paths to exclude from validation
+    EXCLUDED_PATHS = [
+        "/docs",
+        "/redoc",
+        "/openapi.json",
+        "/health",
+        "/static",
+        "/uploads",
+    ]
+
     async def dispatch(self, request: Request, call_next: Callable):
-        # Check URL for suspicious patterns
+        # Skip validation for documentation and static files
+        if any(request.url.path.startswith(path) for path in self.EXCLUDED_PATHS):
+            return await call_next(request)
+
+        # Check URL for suspicious patterns (but allow ../ in valid paths)
         url_str = str(request.url).lower()
         for pattern in self.SUSPICIOUS_PATTERNS:
             if pattern.lower() in url_str:
+                # Log suspicious request
+                print(f"⚠️  Suspicious request blocked: {pattern} in {request.url.path}")
                 return JSONResponse(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     content={"detail": "Invalid request format"}
                 )
 
-        # Check headers
+        # Check headers (but be lenient with user agents for browsers)
         user_agent = request.headers.get("user-agent", "")
-        if len(user_agent) > 500 or not user_agent:
-            # Block requests with suspicious user agents
+        if len(user_agent) > 1000:  # Increased from 500
+            # Block requests with very long user agents
             if settings.ENVIRONMENT == "production":
                 return JSONResponse(
                     status_code=status.HTTP_400_BAD_REQUEST,
