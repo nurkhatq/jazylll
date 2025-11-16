@@ -139,7 +139,7 @@ export default function SalonDetailPage() {
     );
   }
 
-  const selectedServiceData = salon.services.find((s) => s.id === selectedService);
+  const selectedServiceData = salon.services?.find((s) => s.id === selectedService);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -187,7 +187,7 @@ export default function SalonDetailPage() {
           <div className="bg-white p-6 rounded-lg shadow">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Locations</h2>
             <div className="space-y-4">
-              {salon.branches.map((branch) => (
+              {salon.branches && salon.branches.length > 0 ? salon.branches.map((branch) => (
                 <div
                   key={branch.id}
                   className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
@@ -219,7 +219,9 @@ export default function SalonDetailPage() {
                     )}
                   </div>
                 </div>
-              ))}
+              )) : (
+                <p className="text-gray-500 text-center py-4">No locations available</p>
+              )}
             </div>
           </div>
 
@@ -227,7 +229,7 @@ export default function SalonDetailPage() {
           <div className="bg-white p-6 rounded-lg shadow">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Services</h2>
             <div className="space-y-3">
-              {salon.services.map((service) => (
+              {salon.services && salon.services.length > 0 ? salon.services.map((service) => (
                 <div
                   key={service.id}
                   className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
@@ -257,12 +259,14 @@ export default function SalonDetailPage() {
                     </div>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <p className="text-gray-500 text-center py-4">No services available</p>
+              )}
             </div>
           </div>
 
           {/* Masters */}
-          {salon.masters.length > 0 && (
+          {salon.masters && salon.masters.length > 0 && (
             <div className="bg-white p-6 rounded-lg shadow">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Our Masters</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
