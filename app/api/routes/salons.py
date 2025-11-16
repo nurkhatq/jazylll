@@ -103,6 +103,19 @@ async def create_salon(
     return salon
 
 
+@router.get("", response_model=List[SalonResponse])
+async def get_my_salons(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get current user's salons"""
+    salons = db.query(Salon).filter(
+        Salon.owner_id == current_user.id,
+        Salon.deleted_at.is_(None)
+    ).all()
+    return salons
+
+
 @router.get("/{salon_id}", response_model=SalonResponse)
 async def get_salon(salon_id: UUID, db: Session = Depends(get_db)):
     """Get salon by ID"""
