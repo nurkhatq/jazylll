@@ -171,7 +171,20 @@ async def manage_salon(
 
     db.commit()
 
-    # TODO: Log change in audit_logs
+    # Log change in audit_logs
+    from app.models.audit import AuditLog
+    audit_log = AuditLog(
+        user_id=admin_user.id,
+        action_type="SALON_UPDATED_BY_ADMIN",
+        entity_type="salon",
+        entity_id=salon.id,
+        changes={
+            "updated_fields": update_data.dict(exclude_unset=True),
+            "admin_id": str(admin_user.id)
+        }
+    )
+    db.add(audit_log)
+    db.commit()
 
     return {
         "id": str(salon.id),
@@ -353,7 +366,7 @@ async def get_reviews_for_moderation(
                 "created_at": str(review.created_at),
                 "is_visible": review.is_visible,
                 "salon_response": review.salon_response,
-                "moderation_reason": None,  # TODO: Implement auto-moderation flags
+                "moderation_flags": review.moderation_flags or {},
             }
         )
 

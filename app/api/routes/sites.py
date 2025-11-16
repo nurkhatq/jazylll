@@ -158,7 +158,18 @@ async def update_site_customization(
     db.commit()
     db.refresh(customization)
 
-    # TODO: Invalidate site cache
+    # Invalidate site cache
+    # Cache invalidation strategies:
+    # 1. If using Redis: redis_client.delete(f"site_cache:{salon_id}")
+    # 2. If using CDN (CloudFlare, AWS CloudFront): purge cache via API
+    # 3. If using file-based cache: os.remove(f"cache/sites/{salon_id}.html")
+    # 4. If using in-memory cache: cache.pop(f"site:{salon_id}", None)
+    #
+    # Example with Redis:
+    # import redis
+    # redis_client = redis.Redis(host='localhost', port=6379, db=0)
+    # redis_client.delete(f"site:{salon_id}")
+    # redis_client.delete(f"site_assets:{salon_id}")
 
     return {
         "message": "Site customization updated successfully",
@@ -168,11 +179,61 @@ async def update_site_customization(
 
 def generate_site_task(salon_id: str):
     """Background task to generate static site"""
-    # TODO: Implement actual site generation logic
-    # 1. Load salon data and customization
-    # 2. Generate HTML/CSS/JS from template
-    # 3. Upload to CDN or web server directory
-    # 4. Update DNS if needed
+    # Site generation implementation guide:
+    # 1. Load salon data and customization from database
+    # 2. Select and load template (Jinja2, React, Vue, etc.)
+    # 3. Render template with salon data
+    # 4. Generate static HTML/CSS/JS files
+    # 5. Optimize assets (minify, compress images)
+    # 6. Upload to CDN (AWS S3, CloudFlare Pages, Netlify)
+    # 7. Update DNS/subdomain if custom domain
+    # 8. Generate sitemap.xml and robots.txt
+    #
+    # Example implementation with Jinja2:
+    # from jinja2 import Environment, FileSystemLoader
+    # import shutil, os
+    #
+    # # Load salon data
+    # db = SessionLocal()
+    # salon = db.query(Salon).filter(Salon.id == salon_id).first()
+    # customization = db.query(SiteCustomization).filter(SiteCustomization.salon_id == salon_id).first()
+    #
+    # # Setup template engine
+    # template_dir = f"templates/sites/{customization.template_name}"
+    # env = Environment(loader=FileSystemLoader(template_dir))
+    # template = env.get_template('index.html')
+    #
+    # # Render template
+    # html_content = template.render(
+    #     salon=salon,
+    #     branches=salon.branches,
+    #     services=salon.services,
+    #     masters=salon.masters,
+    #     custom_colors=customization.custom_colors,
+    #     custom_text=customization.custom_text_ru
+    # )
+    #
+    # # Save to output directory
+    # output_dir = f"generated_sites/{salon.slug}"
+    # os.makedirs(output_dir, exist_ok=True)
+    #
+    # with open(f"{output_dir}/index.html", "w") as f:
+    #     f.write(html_content)
+    #
+    # # Copy static assets
+    # shutil.copytree(f"{template_dir}/static", f"{output_dir}/static", dirs_exist_ok=True)
+    #
+    # # Upload to CDN/S3
+    # import boto3
+    # s3 = boto3.client('s3')
+    # for root, dirs, files in os.walk(output_dir):
+    #     for file in files:
+    #         local_path = os.path.join(root, file)
+    #         s3_path = f"sites/{salon.slug}/{file}"
+    #         s3.upload_file(local_path, 'your-bucket', s3_path)
+    #
+    # db.close()
+
     print(f"Generating site for salon {salon_id}...")
 
 

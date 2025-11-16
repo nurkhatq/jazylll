@@ -51,13 +51,27 @@ async def topup_advertising_budget(
     db.flush()
 
     # In production, integrate with payment gateway
-    # For now, simulate payment URL
+    # Payment gateway integration steps:
+    # 1. Create payment session with provider (Kaspi, Halyk, Stripe, etc.)
+    # 2. Return actual payment URL from provider
+    # 3. Set up webhook endpoint to handle payment status updates
+    # 4. On webhook, verify payment signature and update status
+    # 5. Add budget only after confirmed payment
+    #
+    # Example integration with Kaspi QR:
+    # payment_session = kaspi_api.create_payment(amount=amount, order_id=str(payment.id))
+    # payment_url = payment_session['qr_code_url']
+    #
+    # Example webhook handler:
+    # @router.post("/payments/webhook/kaspi")
+    # async def kaspi_webhook(data: dict, signature: str):
+    #     if not verify_kaspi_signature(data, signature): raise 401
+    #     payment = get_payment(data['order_id'])
+    #     if data['status'] == 'success':
+    #         payment.status = PaymentStatus.COMPLETED
+    #         salon.advertising_budget += payment.amount
+    #
     payment_url = f"https://payment-gateway.example.com/pay/{payment.id}"
-
-    # TODO: In real implementation:
-    # 1. Create payment session with payment provider
-    # 2. Return actual payment URL
-    # 3. Handle webhook to update payment status and add budget
 
     # For demonstration, auto-complete the payment
     payment.payment_status = PaymentStatus.COMPLETED

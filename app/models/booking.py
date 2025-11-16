@@ -98,6 +98,7 @@ class Review(Base):
 
     is_verified = Column(Boolean, default=True)
     is_visible = Column(Boolean, default=True, index=True)
+    moderation_flags = Column(JSON, nullable=True)  # Auto-moderation flags: {spam: bool, inappropriate_language: bool, suspicious: bool}
 
     salon_response = Column(Text, nullable=True)
     responded_at = Column(DateTime(timezone=True), nullable=True)

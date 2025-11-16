@@ -47,6 +47,7 @@ class SalonResponse(BaseModel):
     total_reviews: int
     is_active: bool
     created_at: datetime
+    branches: Optional[List['BranchResponse']] = []
 
     class Config:
         from_attributes = True
