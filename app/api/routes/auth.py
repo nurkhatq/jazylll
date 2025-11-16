@@ -170,15 +170,40 @@ async def google_auth(request: GoogleAuthRequest, db: Session = Depends(get_db))
     try:
         # Verify Google token
         from google.oauth2 import id_token
-        from google.auth.transport import requests
+        from google.auth.transport import requests as google_requests
         from app.core.config import settings
+        import jwt
+        import requests as http_requests
+        from jwt.algorithms import RSAAlgorithm
+        import time
 
-        # Validate token with Google
-        idinfo = id_token.verify_oauth2_token(
+        # Get Google's public keys (PEM format)
+        certs_url = 'https://www.googleapis.com/oauth2/v1/certs'
+        certs_response = http_requests.get(certs_url)
+        certs = certs_response.json()
+
+        # Decode token header to get the key ID
+        token_header = jwt.get_unverified_header(request.id_token)
+        key_id = token_header.get('kid')
+
+        if key_id not in certs:
+            raise ValueError("Invalid token - key ID not found in Google's certificates")
+
+        # Get the public key (Google returns PEM-encoded keys)
+        public_key = certs[key_id]
+
+        # Verify and decode with 30 seconds of clock skew tolerance
+        idinfo = jwt.decode(
             request.id_token,
-            requests.Request(),
-            settings.GOOGLE_CLIENT_ID
+            key=public_key,
+            algorithms=['RS256'],
+            audience=settings.GOOGLE_CLIENT_ID,
+            leeway=30  # Allow 30 seconds of clock skew
         )
+
+        # Verify issuer
+        if idinfo.get('iss') not in ['https://accounts.google.com', 'accounts.google.com']:
+            raise ValueError("Invalid token issuer")
 
         # Extract user info from Google
         google_id = idinfo['sub']

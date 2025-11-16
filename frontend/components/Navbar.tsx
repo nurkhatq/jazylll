@@ -78,15 +78,9 @@ export default function Navbar() {
               <div className="hidden md:flex space-x-4">
                 <Link
                   href="/auth/login"
-                  className="text-gray-700 hover:text-blue-600 px-4 py-2 text-sm font-medium"
-                >
-                  Login
-                </Link>
-                <Link
-                  href="/auth/register"
                   className="bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-medium"
                 >
-                  Sign Up
+                  Get Started
                 </Link>
               </div>
             )}
@@ -146,15 +140,9 @@ export default function Navbar() {
               <>
                 <Link
                   href="/auth/login"
-                  className="block px-3 py-2 text-gray-900 hover:bg-gray-100 rounded-md"
-                >
-                  Login
-                </Link>
-                <Link
-                  href="/auth/register"
                   className="block px-3 py-2 bg-blue-600 text-white text-center rounded-md"
                 >
-                  Sign Up
+                  Get Started
                 </Link>
               </>
             )}
