@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 import os
 
 from app.core.config import settings
-from app.api.routes import auth, users, salons, bookings, catalog, masters, advertising, sites, admin
+from app.api.routes import auth, users, salons, bookings, catalog, masters, advertising, sites, admin, categories
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -36,6 +36,7 @@ if os.path.exists(settings.UPLOAD_DIR):
 # Include routers
 app.include_router(auth.router, prefix=settings.API_V1_PREFIX)
 app.include_router(users.router, prefix=settings.API_V1_PREFIX)
+app.include_router(categories.router, prefix=settings.API_V1_PREFIX)  # PUBLIC - no auth required
 app.include_router(salons.router, prefix=settings.API_V1_PREFIX)
 app.include_router(masters.router, prefix=settings.API_V1_PREFIX)
 app.include_router(bookings.router, prefix=settings.API_V1_PREFIX)
