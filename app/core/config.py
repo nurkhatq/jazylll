@@ -4,7 +4,7 @@ from typing import Optional
 
 class Settings(BaseSettings):
     # Database
-    DATABASE_URL: str = "postgresql://postgresql://Imang:0000@localhost:5432/jazyl"
+    DATABASE_URL: str = "postgresql://Imang:0000@localhost:5432/jazyl"
 
     # JWT
     SECRET_KEY: str = "your-secret-key-change-in-production"
