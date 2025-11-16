@@ -23,6 +23,7 @@ from app.api.routes import (
     users,
     salons,
     bookings,
+    salon_bookings,  # NEW: Salon booking management
     catalog,
     masters,
     advertising,
@@ -155,6 +156,7 @@ app.include_router(users.router, prefix=settings.API_V1_PREFIX, tags=["Users"])
 app.include_router(salons.router, prefix=settings.API_V1_PREFIX, tags=["Salons"])
 app.include_router(masters.router, prefix=settings.API_V1_PREFIX, tags=["Masters"])
 app.include_router(bookings.router, prefix=settings.API_V1_PREFIX, tags=["Bookings"])
+app.include_router(salon_bookings.router, prefix=settings.API_V1_PREFIX, tags=["Salon Booking Management"])
 app.include_router(advertising.router, prefix=settings.API_V1_PREFIX, tags=["Advertising"])
 app.include_router(sites.router, prefix=settings.API_V1_PREFIX, tags=["Site Customization"])
 
