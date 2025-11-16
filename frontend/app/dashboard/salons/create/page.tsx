@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSalon } from '@/lib/api/salons';
 import { getCategories } from '@/lib/api/categories';
+import { getErrorMessage } from '@/lib/utils/errorHandler';
 import { ArrowLeft, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useEffect } from 'react';
 
 interface Category {
   id: string;
@@ -24,6 +24,7 @@ export default function CreateSalonPage() {
     business_name: '',
     display_name: '',
     category_id: '',
+    city: '',
     description_ru: '',
     description_kk: '',
     description_en: '',
@@ -55,7 +56,7 @@ export default function CreateSalonPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.business_name || !formData.display_name || !formData.category_id) {
+    if (!formData.business_name || !formData.display_name || !formData.category_id || !formData.city) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -66,7 +67,7 @@ export default function CreateSalonPage() {
       toast.success('Salon created successfully!');
       router.push(`/dashboard/salons/${salon.id}/edit`);
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Failed to create salon');
+      toast.error(getErrorMessage(error) || 'Failed to create salon');
     } finally {
       setLoading(false);
     }
@@ -141,6 +142,21 @@ export default function CreateSalonPage() {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                City <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="city"
+                value={formData.city}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Almaty"
+                required
+              />
             </div>
           </div>
         </div>
