@@ -2,12 +2,12 @@
 Seed data for initial database setup
 """
 from sqlalchemy.orm import Session
-from app.models.salon import SalonCategory, SubscriptionPlan
 import uuid
 
 
 def seed_categories(db: Session):
     """Seed salon categories"""
+    from app.models.salon import SalonCategory
     categories = [
         {
             "code": "hair",
@@ -103,6 +103,7 @@ def seed_categories(db: Session):
 
 def seed_subscription_plans(db: Session):
     """Seed subscription plans"""
+    from app.models.salon import SubscriptionPlan
     plans = [
         {
             "plan_code": "trial",
