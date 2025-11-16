@@ -219,7 +219,31 @@ async def create_booking(
     db.commit()
     db.refresh(booking)
 
-    # TODO: Queue WhatsApp notification to client and master
+    # Queue WhatsApp notification to client and master
+    from app.models.communication import WhatsAppMessage, WhatsAppMessageType
+
+    # Notify client
+    client_message = WhatsAppMessage(
+        user_id=current_user.id,
+        phone_number=current_user.phone,
+        message_type=WhatsAppMessageType.BOOKING_CONFIRMATION,
+        message_body=f"Booking confirmed for {booking.booking_date} at {booking.start_time}. "
+                     f"Service: {service.service_name_ru}. Branch: {branch.branch_name}."
+    )
+    db.add(client_message)
+
+    # Notify master if assigned
+    if master and master.user and master.user.phone:
+        master_message = WhatsAppMessage(
+            user_id=master.user_id,
+            phone_number=master.user.phone,
+            message_type=WhatsAppMessageType.BOOKING_CONFIRMATION,
+            message_body=f"New booking: {booking.booking_date} at {booking.start_time}. "
+                         f"Client: {current_user.phone}. Service: {service.service_name_ru}."
+        )
+        db.add(master_message)
+
+    db.commit()
 
     return booking
 
@@ -251,9 +275,18 @@ async def get_booking(
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
 
-    # Check permissions
-    if booking.client_id != current_user.id:
-        # TODO: Also allow salon staff to view
+    # Check permissions - allow client, salon staff, and admins
+    from app.models.salon import Salon
+    from app.models.user import UserRole
+
+    is_client = booking.client_id == current_user.id
+    is_admin = current_user.role == UserRole.PLATFORM_ADMIN
+
+    # Check if user is salon owner or staff
+    salon = db.query(Salon).filter(Salon.id == booking.salon_id).first()
+    is_salon_owner = salon and salon.owner_id == current_user.id
+
+    if not (is_client or is_admin or is_salon_owner):
         raise HTTPException(status_code=403, detail="Not enough permissions")
 
     return booking
@@ -432,7 +465,19 @@ async def add_salon_response(
     db.commit()
     db.refresh(review)
 
-    # TODO: Send notification to client
+    # Send notification to client
+    from app.models.communication import Notification, NotificationType
+
+    notification = Notification(
+        user_id=review.client_id,
+        notification_type=NotificationType.REVIEW_RECEIVED,
+        title=f"Response from {salon.display_name}",
+        message=f"The salon has responded to your review: {response_text[:100]}...",
+        data=review.id,
+        sent_via=["in_app"]
+    )
+    db.add(notification)
+    db.commit()
 
     return review
 

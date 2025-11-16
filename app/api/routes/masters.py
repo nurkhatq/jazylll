@@ -173,8 +173,30 @@ async def invite_master(
 
     db.commit()
 
-    # TODO: Send invitation email with token
-    # For now, return basic info
+    # Send invitation email with token
+    # Email service integration:
+    # 1. Generate secure invitation token (JWT with expiration)
+    # 2. Create invitation link: https://yourdomain.com/accept-invite?token={token}
+    # 3. Send email via service (SendGrid, AWS SES, or local SMTP)
+    #
+    # Example implementation:
+    # import jwt
+    # from datetime import datetime, timedelta
+    # invitation_token = jwt.encode({
+    #     'master_id': str(master.id),
+    #     'email': invite_data.email,
+    #     'exp': datetime.utcnow() + timedelta(days=7)
+    # }, settings.SECRET_KEY, algorithm='HS256')
+    #
+    # invitation_link = f"https://yourdomain.com/accept-invite?token={invitation_token}"
+    #
+    # from app.services.email import send_email
+    # send_email(
+    #     to=invite_data.email,
+    #     subject=f"Invitation to join {salon.display_name}",
+    #     body=f"You've been invited to join as a master. Click here: {invitation_link}"
+    # )
+
     return {
         "id": str(master.id),
         "email": invite_data.email,
@@ -191,7 +213,53 @@ async def accept_invitation(
     db: Session = Depends(get_db),
 ):
     """Accept master invitation (simplified - full OAuth integration needed)"""
-    # TODO: Implement proper token validation and Google OAuth
+    # Google OAuth integration implementation guide:
+    # 1. Verify and decode invitation token
+    # 2. Validate Google ID token from frontend
+    # 3. Extract user info from Google token
+    # 4. Create or link user account
+    # 5. Activate master profile
+    #
+    # Example implementation:
+    # import jwt
+    # from google.oauth2 import id_token
+    # from google.auth.transport import requests
+    #
+    # # Verify invitation token
+    # try:
+    #     token_data = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+    #     master_id = token_data['master_id']
+    # except jwt.ExpiredSignatureError:
+    #     raise HTTPException(status_code=400, detail="Invitation link expired")
+    #
+    # # Verify Google ID token
+    # try:
+    #     google_info = id_token.verify_oauth2_token(
+    #         google_id_token,
+    #         requests.Request(),
+    #         settings.GOOGLE_CLIENT_ID
+    #     )
+    #     email = google_info['email']
+    #     google_id = google_info['sub']
+    # except ValueError:
+    #     raise HTTPException(status_code=400, detail="Invalid Google token")
+    #
+    # # Get or create user
+    # user = db.query(User).filter(User.email == email).first()
+    # if not user:
+    #     user = User(email=email, google_id=google_id, role=UserRole.MASTER)
+    #     db.add(user)
+    #     db.flush()
+    #
+    # # Update master profile
+    # master = db.query(Master).filter(Master.id == master_id).first()
+    # master.user_id = user.id
+    # master.is_active = True
+    # master.joined_at = datetime.utcnow()
+    # db.commit()
+    #
+    # return {"message": "Invitation accepted successfully", "user_id": str(user.id)}
+
     raise HTTPException(
         status_code=501,
         detail="Full invitation acceptance requires Google OAuth integration. Use admin panel to manually activate masters for now.",

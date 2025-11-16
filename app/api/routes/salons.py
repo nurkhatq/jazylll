@@ -188,7 +188,21 @@ async def create_branch(
     if salon.owner_id != current_user.id and current_user.role != UserRole.PLATFORM_ADMIN:
         raise HTTPException(status_code=403, detail="Not enough permissions")
 
-    # Check subscription plan limits (TODO: implement based on plan features)
+    # Check subscription plan limits
+    if salon.subscription_plan:
+        current_branch_count = db.query(SalonBranch).filter(
+            SalonBranch.salon_id == salon_id,
+            SalonBranch.is_active == True
+        ).count()
+
+        plan_features = salon.subscription_plan.features or {}
+        max_branches = plan_features.get("max_branches", 1)
+
+        if current_branch_count >= max_branches:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Branch limit reached for your plan. Maximum: {max_branches} branches. Please upgrade your subscription."
+            )
 
     branch = SalonBranch(
         salon_id=salon_id,
