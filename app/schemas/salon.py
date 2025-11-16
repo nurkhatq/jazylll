@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_serializer
 from typing import Optional, List, Dict, Any
 from uuid import UUID
 from datetime import date, datetime
@@ -43,13 +43,20 @@ class SalonResponse(BaseModel):
     email: Optional[str]
     phone: Optional[str]
     website_url: Optional[str]
-    rating: Decimal
+    rating: float
     total_reviews: int
     is_active: bool
     created_at: datetime
     branches: Optional[List['BranchResponse']] = []
     services: Optional[List['ServiceResponse']] = []
     masters: Optional[List] = []  # Will be populated by relationship
+
+    @field_serializer('rating')
+    def serialize_rating(self, rating: Any) -> float:
+        """Convert Decimal to float for JSON serialization"""
+        if rating is None:
+            return 0.0
+        return float(rating)
 
     class Config:
         from_attributes = True
