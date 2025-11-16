@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 import os
 
 from app.core.config import settings
-from app.api.routes import auth, users, salons, bookings, catalog
+from app.api.routes import auth, users, salons, bookings, catalog, masters, advertising, sites, admin
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -37,8 +37,12 @@ if os.path.exists(settings.UPLOAD_DIR):
 app.include_router(auth.router, prefix=settings.API_V1_PREFIX)
 app.include_router(users.router, prefix=settings.API_V1_PREFIX)
 app.include_router(salons.router, prefix=settings.API_V1_PREFIX)
+app.include_router(masters.router, prefix=settings.API_V1_PREFIX)
 app.include_router(bookings.router, prefix=settings.API_V1_PREFIX)
 app.include_router(catalog.router, prefix=settings.API_V1_PREFIX)
+app.include_router(advertising.router, prefix=settings.API_V1_PREFIX)
+app.include_router(sites.router, prefix=settings.API_V1_PREFIX)
+app.include_router(admin.router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/")
